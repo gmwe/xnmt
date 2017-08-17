@@ -10,5 +10,4 @@ before_install:
   - python -m pip install Cython
 install:
   - pip install -r requirements.txt
-script:
-  - PYTHONPATH=xnmt python test/xnmt-tests.py
+script: pytest
