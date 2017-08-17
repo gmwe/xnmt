@@ -4,6 +4,7 @@ python:
   - "3.6"
 cache: pip
 install:
+  - python -m pip install --upgrade pip
   - python setup.py install
 script:
   - PYTHONPATH=xnmt/ python tests/xnmt-tests.py
