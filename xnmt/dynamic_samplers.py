@@ -1,3 +1,11 @@
+"""
+This module contains samplers which sample the training sentences per epoch.
+The data is sampled based on the difference of the training losses in the last two epochs.
+
+See
+https://arxiv.org/pdf/1805.00178.pdf
+
+"""
 from xnmt.persistence import serializable_init, Serializable
 import numpy as np
 
@@ -5,9 +13,9 @@ import numpy as np
 
 class DynamicSampler(Serializable):
   """
-    Abstract dynamic sampler class
+  Abstract dynamic sampler class
 
-    https://arxiv.org/pdf/1805.00178.pdf
+  https://arxiv.org/pdf/1805.00178.pdf
   """
   yaml_tag = '!DynamicSampler'
 
@@ -79,8 +87,9 @@ class DynamicSampler(Serializable):
 
 
 class WeightedSamplingDS(DynamicSampler):
-  """ Performs weighted sampling as in
-      https://arxiv.org/pdf/1805.00178.pdf
+  """
+  Performs weighted sampling as in
+  https://arxiv.org/pdf/1805.00178.pdf
   """
   yaml_tag = '!WeightedSampling'
 
@@ -106,7 +115,9 @@ class WeightedSamplingDS(DynamicSampler):
     pass
 
   def _sample_weighted(self):
-    """Perform a weighted sampling without any replacement.
+    """
+    Perform a weighted sampling without any replacement.
+
     Returns:
       The sampled population where each entry is a data key.
     """
@@ -120,8 +131,9 @@ class WeightedSamplingDS(DynamicSampler):
 
 
 class ReviewMechanismDS(DynamicSampler):
-  """ Performs sampling according to the review mechanism in
-      https://arxiv.org/pdf/1805.00178.pdf
+  """
+  Performs sampling according to the review mechanism in
+  https://arxiv.org/pdf/1805.00178.pdf
   """
   yaml_tag = '!ReviewMechanism'
 

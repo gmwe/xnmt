@@ -50,11 +50,11 @@ class MLELoss(Serializable, LossCalculator):
     return FactoredLossExpr({"mle": loss})
 
 
-class DynamicSamplingLossWrapper(Serializable, LossCalculator):
+class DynamicSamplingLossCalculator(Serializable, LossCalculator):
   """
-  Wraps a loss calculator to report the loss to a dynamic sampler.
+  A loss calculator to report the loss to a dynamic sampler.
   """
-  yaml_tag = '!DynamicSamplingLossWrapper'
+  yaml_tag = '!DynamicSamplingLossCalculator'
 
   @serializable_init
   def __init__(self,
@@ -71,19 +71,27 @@ class DynamicSamplingLossWrapper(Serializable, LossCalculator):
       return ([e for e, m in zip(arr, mask) if m])
 
     if self.dynamic_sampler is not None:
+      # get individal src, trg sentences and their loss,
+      # and convert them into a hashable format.
       tmp_trg, tmp_src = (trg, src)
       for i in range(len(src)):
         if batchers.is_batched(trg):
+          # get a valid mask to remove padding
           if trg.mask != None:
             trg_mask = (1 - trg.mask.np_arr)[i]
           else:
             trg_mask = [1] * trg[i].sent_len()
+          # remove padding
           tmp_trg = tuple([e for e, m in zip(trg[i], trg_mask) if m])
+
         if batchers.is_batched(src):
+          # get a valid mask to remove padding
           if src.mask != None:
             src_mask = (1 - src.mask.np_arr)[i]
           else:
             src_mask = [1] * src[i].sent_len()
+          # remove padding
+          # array must be treated differently
           if type(src[0]) == sent.ArraySentence:
             tmp_src = tuple([_arrayinput_reverse_mask(e, src_mask) for e in src[i]])
           else:

@@ -9,7 +9,7 @@ from xnmt import batchers, event_trigger, input_readers, logger, losses, loss_tr
 from xnmt.models import base as model_base
 from xnmt.eval import tasks as eval_tasks
 from xnmt.persistence import serializable_init, Serializable, bare
-from xnmt.loss_calculators import DynamicSamplingLossWrapper
+from xnmt.loss_calculators import DynamicSamplingLossCalculator
 from xnmt.dynamic_samplers import DynamicSampler
 
 class TrainingTask(object):
@@ -155,10 +155,9 @@ class SimpleTrainingTask(TrainingTask, Serializable):
 
     self.dynamic_sampler = dynamic_sampler
     if dynamic_sampler is not None:
-      if type(self.loss_calculator) != DynamicSamplingLossWrapper:
-        logger.error("loss_caluclator: DynamicSamplingLossWrapper is needed when using Dynamic Sampling")
-        exit(0)
-      print('Dynamic sampling enabled.')
+      if type(self.loss_calculator) != DynamicSamplingLossCalculator:
+        raise ValueError("loss_caluclator: DynamicSamplingLossCalculator is needed when using Dynamic Sampling")
+      logger.info('Dynamic sampling enabled.')
       loss_calculator.dynamic_sampler = self.dynamic_sampler
 
     self.sample_train_sents = sample_train_sents
