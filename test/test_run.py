@@ -104,6 +104,12 @@ class TestRunningConfig(unittest.TestCase):
   def test_search_strategy_minrisk(self):
     run.main(["test/config/minrisk.yaml"])
 
+  def test_dynamic_sampling_weighted_sampling(self):
+    run.main(["test/config/dynamic_sampling_ws.yaml"])
+
+  def test_dynamic_sampling_review_mechanism(self):
+    run.main(["test/config/dynamic_sampling_rm.yaml"])
+
   def tearDown(self):
     try:
       if os.path.isdir("test/tmp"):
