@@ -15,6 +15,7 @@ from xnmt.persistence import bare
 from xnmt import batchers, event_trigger
 from xnmt.eval import metrics
 
+
 class LossCalculator(object):
   """
   A template class implementing the training strategy and corresponding loss calculation.
@@ -31,6 +32,7 @@ class LossCalculator(object):
       pass
     return sequence
 
+
 class MLELoss(Serializable, LossCalculator):
   """
   Max likelihood loss calculator.
@@ -46,6 +48,55 @@ class MLELoss(Serializable, LossCalculator):
                 trg: Union[sent.Sentence, 'batchers.Batch']):
     loss = model.calc_nll(src, trg)
     return FactoredLossExpr({"mle": loss})
+
+
+class DynamicSamplingLossWrapper(Serializable, LossCalculator):
+  """
+  Wraps a loss calculator to report the loss to a dynamic sampler.
+  """
+  yaml_tag = '!DynamicSamplingLossWrapper'
+
+  @serializable_init
+  def __init__(self,
+               loss_calculator:LossCalculator=bare(MLELoss)):
+    self.loss_calculator = loss_calculator
+    # dynamic sampler is set in SimpleTrainingTask
+    self.dynamic_sampler = None
+
+  def calc_loss(self, translator, src, trg):
+    loss = self.loss_calculator.calc_loss(translator, src, trg)
+
+    # dynamic sampling
+    def _arrayinput_reverse_mask(arr, mask):
+      return ([e for e, m in zip(arr, mask) if m])
+
+    if self.dynamic_sampler is not None:
+      tmp_trg, tmp_src = (trg, src)
+      for i in range(len(src)):
+        if batchers.is_batched(trg):
+          if trg.mask != None:
+            trg_mask = (1 - trg.mask.np_arr)[i]
+          else:
+            trg_mask = [1] * trg[i].sent_len()
+          tmp_trg = tuple([e for e, m in zip(trg[i], trg_mask) if m])
+        if batchers.is_batched(src):
+          if src.mask != None:
+            src_mask = (1 - src.mask.np_arr)[i]
+          else:
+            src_mask = [1] * src[i].sent_len()
+          if type(src[0]) == sent.ArraySentence:
+            tmp_src = tuple([_arrayinput_reverse_mask(e, src_mask) for e in src[i]])
+          else:
+            tmp_src = tuple([e for e, m in zip(src[i], src_mask) if m])
+
+        if len(src) == 1:
+          single_loss = loss.value()
+        else:
+          single_loss = loss.value()[i]
+        self.dynamic_sampler.update_loss(tmp_src, tmp_trg, single_loss)
+
+    return loss
+
 
 class GlobalFertilityLoss(Serializable, LossCalculator):
   """

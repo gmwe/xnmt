@@ -28,6 +28,7 @@ import xnmt.experiments
 import xnmt.hyper_params
 import xnmt.inferences
 import xnmt.input_readers
+import xnmt.loss_calculators
 import xnmt.modelparts.attenders
 import xnmt.modelparts.bridges
 import xnmt.modelparts.decoders
@@ -42,6 +43,7 @@ import xnmt.models.sequence_labelers
 import xnmt.models.translators
 import xnmt.optimizers
 import xnmt.param_initializers
+import xnmt.dynamic_samplers
 import xnmt.persistence
 import xnmt.reports
 import xnmt.rl

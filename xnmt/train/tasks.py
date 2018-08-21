@@ -9,6 +9,8 @@ from xnmt import batchers, event_trigger, input_readers, logger, losses, loss_tr
 from xnmt.models import base as model_base
 from xnmt.eval import tasks as eval_tasks
 from xnmt.persistence import serializable_init, Serializable, bare
+from xnmt.loss_calculators import DynamicSamplingLossWrapper
+from xnmt.dynamic_samplers import DynamicSampler
 
 class TrainingTask(object):
   """
@@ -104,6 +106,7 @@ class SimpleTrainingTask(TrainingTask, Serializable):
     max_num_train_sents: Train only on the first n sentences
     max_src_len: Discard training sentences with source-side longer than this
     max_trg_len: Discard training sentences with target-side longer than this
+    dynamic_sampler: sampler to select a portion of the sentences after each epoch
     name: will be prepended to log outputs if given
   """
   yaml_tag = '!SimpleTrainingTask'
@@ -125,7 +128,8 @@ class SimpleTrainingTask(TrainingTask, Serializable):
                name: Optional[str] = None,
                sample_train_sents: Optional[int] = None,
                max_num_train_sents: Optional[int] = None, max_src_len: Optional[int] = None,
-               max_trg_len: Optional[int] = None) -> None:
+               max_trg_len: Optional[int] = None,
+               dynamic_sampler: Optional[DynamicSampler] = None) -> None:
     self.src_file = src_file
     self.trg_file = trg_file
     self.dev_tasks = dev_tasks
@@ -149,6 +153,14 @@ class SimpleTrainingTask(TrainingTask, Serializable):
     self.model = model
     self.loss_calculator = loss_calculator
 
+    self.dynamic_sampler = dynamic_sampler
+    if dynamic_sampler is not None:
+      if type(self.loss_calculator) != DynamicSamplingLossWrapper:
+        logger.error("loss_caluclator: DynamicSamplingLossWrapper is needed when using Dynamic Sampling")
+        exit(0)
+      print('Dynamic sampling enabled.')
+      loss_calculator.dynamic_sampler = self.dynamic_sampler
+
     self.sample_train_sents = sample_train_sents
     self.max_num_train_sents = max_num_train_sents
     self.max_src_len = max_src_len
@@ -157,6 +169,9 @@ class SimpleTrainingTask(TrainingTask, Serializable):
     self.batcher = batcher
     self.dev_loss_tracker = loss_trackers.DevLossTracker(self, dev_every, name)
     self.name = name
+
+    self.src_data_orig = None
+    self.trg_data_orig = None
 
   def _augment_data_initial(self):
     """
@@ -245,6 +260,20 @@ class SimpleTrainingTask(TrainingTask, Serializable):
     self.training_state.epoch_seed = random.randint(1,2147483647)
     random.seed(self.training_state.epoch_seed)
     np.random.seed(self.training_state.epoch_seed)
+    if self.dynamic_sampler is not None:
+      self.dynamic_sampler.next_epoch()
+
+    if self.training_state.epoch_num > 1 and self.dynamic_sampler is not None:
+      if self.training_state.epoch_num == 2:
+        self.src_data_orig = self.src_data
+        self.trg_data_orig = self.trg_data
+      logger.info("sampling..")
+      sample_population = self.dynamic_sampler.sample()
+      sampled_data = [(s,t) for (s,t) in zip(self.src_data_orig, self.trg_data_orig)
+                                          if self.dynamic_sampler._access_by_objects(s,t) in sample_population]
+      self.src_data = [s for s,t in sampled_data]
+      self.trg_data = [t for s,t in sampled_data]
+
     self.src_batches, self.trg_batches = \
       self.batcher.pack(self.src_data, self.trg_data)
     self.training_state.epoch_num += 1
