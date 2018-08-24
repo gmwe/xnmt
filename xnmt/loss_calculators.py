@@ -74,34 +74,18 @@ class DynamicSamplingLossCalculator(Serializable, LossCalculator):
       # get individal src, trg sentences and their loss,
       # and convert them into a hashable format.
       tmp_trg, tmp_src = (trg, src)
-      for i in range(len(src)):
-        if batchers.is_batched(trg):
-          # get a valid mask to remove padding
-          if trg.mask != None:
-            trg_mask = (1 - trg.mask.np_arr)[i]
-          else:
-            trg_mask = [1] * trg[i].sent_len()
-          # remove padding
-          tmp_trg = tuple([e for e, m in zip(trg[i], trg_mask) if m])
-
-        if batchers.is_batched(src):
-          # get a valid mask to remove padding
-          if src.mask != None:
-            src_mask = (1 - src.mask.np_arr)[i]
-          else:
-            src_mask = [1] * src[i].sent_len()
-          # remove padding
-          # array must be treated differently
-          if type(src[0]) == sent.ArraySentence:
-            tmp_src = tuple([_arrayinput_reverse_mask(e, src_mask) for e in src[i]])
-          else:
-            tmp_src = tuple([e for e, m in zip(src[i], src_mask) if m])
-
-        if len(src) == 1:
+      # TODO: test for non-batched
+      if not batchers.is_batched(src):
+        tmp_trg = [trg]
+        tmp_src = [src]
+      for i in range(len(tmp_src)):
+        single_trg = [e for e in tmp_trg[i].get_unpadded_sent()]
+        single_src = [e for e in tmp_src[i].get_unpadded_sent()]
+        if len(tmp_src) == 1:
           single_loss = loss.value()
         else:
           single_loss = loss.value()[i]
-        self.dynamic_sampler.update_loss(tmp_src, tmp_trg, single_loss)
+        self.dynamic_sampler.update_loss(single_src, single_trg, single_loss)
 
     return loss
 

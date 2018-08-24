@@ -39,14 +39,9 @@ class DynamicSampler(Serializable):
 
   @staticmethod
   def _access_by_objects(src, trg):
-    # distinction needed for different input types
-    if type(src[0]) == np.ndarray:
-      tmp_src = str(tuple([list(e) for e in src]))
-    else:
-      tmp_src = str(tuple([e for e in src]))
-
-    tmp_trg = str(tuple([e for e in trg]))
-    return tmp_src, tmp_trg
+    tmp_trg = [e for e in trg.get_unpadded_sent()]
+    tmp_src = [e for e in src.get_unpadded_sent()]
+    return DynamicSampler._access(tmp_src, tmp_trg)
 
   @staticmethod
   def _access(src, trg):
